@@ -3,4 +3,4 @@ project(sender)
 
 set(CMAKE_CXX_STANDARD 17)
 
-add_executable(sender main.cpp)
+add_executable(sender main.cpp stats.cpp stats.h)
