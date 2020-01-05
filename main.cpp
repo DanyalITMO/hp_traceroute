@@ -69,6 +69,35 @@ void sig_alrm(int signo) {
 void fill_ethernet(char* first){
 
 }*/
+
+u_short in_cksum(u_short *addr, int len) {
+    int nleft = len;
+    u_short *w = addr;
+    int sum = 0;
+    u_short answer = 0;
+/*
+ * Our algorithm is simple, using a 32 bit accumulator (sum), we add
+ * sequential 16 bit words to it, and at the end, fold back all the
+ * carry bits from the top 16 bits into the lower 16 bits.
+ */
+    while (nleft > 1) {
+        sum += *w++;
+        nleft -= 2;
+    }
+
+/* mop up an odd byte, if necessary */
+    if (nleft == 1) {
+        *(u_char *) (&answer) = *(u_char *) w;
+        sum += answer;
+    }
+
+/* add back carry outs from top 16 bits to low 16 bits */
+    sum = (sum >> 16) + (sum & 0xffff);    /* add hi 16 to low 16 */
+    sum += (sum >> 16);            /* add carry */
+    answer = ~sum;                /* truncate to 16 bits */
+    return (answer);
+}
+
 int main(int argc, char **argv) {
     signal(SIGALRM, sig_alrm);
     sig_alrm(SIGALRM);		/* send first packet */
@@ -114,6 +143,7 @@ int main(int argc, char **argv) {
     ip->check = 0;
     ip->saddr = dst_addr.sin_addr.s_addr;
     ip->daddr = dst_addr.sin_addr.s_addr;
+    ip->check = in_cksum((u_short *) ip, sizeof(iphdr));
 
 //icmp
     icmp *icmp = (struct icmp *) first;
@@ -123,12 +153,14 @@ int main(int argc, char **argv) {
     icmp->icmp_code = 0;
     icmp->icmp_id = 1;
     icmp->icmp_seq = 1;
-//    memset(icmp->icmp_data, 0xa5, datalen);	/* fill with pattern */
+
+    auto datalen = sizeof(packet) - (first - packet) - 8;
+    memset(icmp->icmp_data, 0xa5, datalen);	/* fill with pattern */
 //    Gettimeofday((struct timeval *) icmp->icmp_data, NULL);
 
-//    len = 8 + datalen;		/* checksum ICMP header and data */
-    icmp->icmp_cksum = 0;
-//    icmp->icmp_cksum = in_cksum((u_short *) icmp, len);;
+    auto len = 8 + datalen;		/* checksum ICMP header and data */
+//    icmp->icmp_cksum = 0;
+    icmp->icmp_cksum = in_cksum((u_short *) icmp, len);;
 
     struct sockaddr_in addr;
     addr.sin_family = AF_INET;
@@ -138,10 +170,13 @@ int main(int argc, char **argv) {
     addr.sin_addr.s_addr = get_ip("veth0");
 //    inet_pton(AF_INET, "192.168.11.10", (struct in_addr *) &addr.sin_addr.s_addr);
 
-    if (bind(s, (struct sockaddr *) &addr, sizeof(addr)) < 0) {
-        perror("bind");
-        exit(2);
+    std::string opt = "enp0s25";
+//    int len = strnlen(opt, IFNAMSIZ);
+    if (opt.size() >= IFNAMSIZ) {
+        fprintf(stderr, "Too long iface name");
+        return 1;
     }
+    setsockopt(s, SOL_SOCKET, SO_BINDTODEVICE, opt.data(), opt.size());
 
     while (42) {
 //        sleep(1);
