@@ -1,7 +1,3 @@
-//
-// Created by root on 05.01.2020.
-//
-
 #ifndef SENDER_STATS_H
 #define SENDER_STATS_H
 

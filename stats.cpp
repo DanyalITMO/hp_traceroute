@@ -45,13 +45,13 @@ std::tuple<double, std::string> get_max_measurement(std::size_t number) {
 //    float ret_num;//{number};
 //        ret_num = ;
     if (number > gb)
-        return {static_cast<double>(number) / gb, "gb"};
+        return {static_cast<double>(number) / gb, "gbit/s"};
     else if (static_cast<double>(number) > mb)
-        return {static_cast<double>(number) / mb, "mb"};
+        return {static_cast<double>(number) / mb, "mbit/s"};
     else if (number > kb)
-        return {static_cast<double>(number) / kb, "kb"};
+        return {static_cast<double>(number) / kb, "kbit/s"};
     else
-        return {number, "b"};
+        return {number, "bit/s"};
 }
 
 /*
