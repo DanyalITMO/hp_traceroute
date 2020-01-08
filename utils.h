@@ -8,9 +8,6 @@
 #include <sys/types.h>
 #include <netinet/ip.h>
 #include <arpa/inet.h>
-#include <string.h>
-#include <stdio.h>
-#include <stdlib.h>
 #include <zconf.h>
 #include <linux/if_ppp.h>
 #include <net/if.h>

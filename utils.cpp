@@ -1,5 +1,8 @@
 
 #include "utils.h"
+#include <string.h>
+#include <stdio.h>
+#include <stdlib.h>
 
 macaddr_t get_mac_from_iface(int s, std::string_view ifname){
     struct ifreq if_mac;

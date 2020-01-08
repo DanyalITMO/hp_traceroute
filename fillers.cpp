@@ -3,18 +3,37 @@
 #include <sys/types.h>
 #include <netinet/ip.h>
 #include <netinet/ip_icmp.h>
-#include <csignal>
 #include "stats.h"
 #include <netinet/in.h>
+#include <cstring>
 #include "utils.h"
 
-void fill_ethernet(char*& first, std::array<uint8_t, IFHWADDRLEN> const& dst, std::array<uint8_t, IFHWADDRLEN> const& src){
+void fill_ethernet(char*& first, std::array<uint8_t, IFHWADDRLEN> const& dst, std::array<uint8_t, IFHWADDRLEN> const& src, uint16_t proto){
     ether_header *eh = (struct ether_header *) first;
     first += sizeof(ether_header);
 
     memcpy(eh->ether_dhost, &dst[0], IFHWADDRLEN);
     memcpy(eh->ether_shost, &src[0], IFHWADDRLEN);
-    eh->ether_type = htons(ETH_P_IP);
+    eh->ether_type = htons(proto);
+}
+
+void fill_arp_request(char*& first, macaddr_t const& src_mac, in_addr_t dst_ip, in_addr_t src_ip){
+    my_arphdr* arp = reinterpret_cast<my_arphdr*>(first);
+    first += sizeof(my_arphdr);
+
+    arp->ar_hrd =  htons(ARPHRD_ETHER);
+    arp->ar_pro =  htons(ETH_P_IP);
+    arp->ar_hln = IFHWADDRLEN;
+    arp->ar_pln = sizeof(in_addr_t);
+    arp->ar_op =  htons(ARPOP_REQUEST);
+
+    memcpy(arp->ar_sha, &src_mac[0], IFHWADDRLEN);
+    memset(arp->ar_tha, 0xFF, IFHWADDRLEN);
+
+    auto* src = reinterpret_cast<in_addr_t*>(arp->ar_sip);
+    *src =  src_ip;
+    auto* dst = reinterpret_cast<in_addr_t*>(arp->ar_tip);
+    *dst =  dst_ip;
 }
 
 void fill_ip(char*& first, char* packet,  in_addr_t dst, in_addr_t src, std::size_t packet_size){
