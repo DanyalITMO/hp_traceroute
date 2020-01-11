@@ -43,25 +43,24 @@ void fill_ip(char*& first, char* packet,  in_addr_t dst, in_addr_t src, std::siz
     ip->ihl = 5;
     ip->version = 4;
     ip->tos = 0;
-    ip->tot_len = htons(packet_size - (first - packet) + sizeof(iphdr));
+    ip->tot_len = htons(packet_size + sizeof(iphdr));
     ip->frag_off = 0;
     ip->ttl = 64;
     ip->protocol = IPPROTO_ICMP; // this has to be IPPROTO_RAW
-    ip->check = 0;
     ip->saddr = src;
     ip->daddr = dst;
+    ip->check = 0;
     ip->check = in_cksum((u_short *) ip, sizeof(iphdr));
 }
 
 void fill_icmp(char*& first, char* packet, std::size_t packet_size){
-    auto len = packet_size - (first - packet);
     icmp *icmp = (struct icmp *) first;
-    first += sizeof(icmp);
+    first += icmp_header_size;
 
     icmp->icmp_type = ICMP_ECHO;
     icmp->icmp_code = 0;
     icmp->icmp_id = 1;
     icmp->icmp_seq = 1;
     icmp->icmp_cksum = 0;
-    icmp->icmp_cksum = in_cksum((u_short *) icmp, len);
+    icmp->icmp_cksum = in_cksum((u_short *) icmp, icmp_header_size + packet_size);
 }

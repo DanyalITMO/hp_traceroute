@@ -21,7 +21,7 @@
 #include <csignal>
 #include "stats.h"
 #include <netinet/in.h>
-
+constexpr  std::size_t icmp_header_size{8};
 using macaddr_t = std::array<uint8_t, IFHWADDRLEN>;
 
 macaddr_t get_mac_from_iface(int s, std::string_view ifname);
