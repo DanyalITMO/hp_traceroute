@@ -17,6 +17,8 @@ macaddr_t get_mac_from_iface(int s, std::string_view ifname){
 
 in_addr_t get_ip_from_iface(std::string_view name)
 {
+
+    //TODO if_indextoname // if_indextoname
     int fd;
     struct ifreq ifr;
 

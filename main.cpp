@@ -11,9 +11,11 @@
 #include <netinet/in.h>
 #include "utils.h"
 #include <linux/if_packet.h>
+#include <linux/rtnetlink.h>
 #include "fillers.h"
+#include "route.h"
 
-std::string interface_name{"enp0s25"};
+std::string interface_name; //{"enx9cd643a36df7"};
 std::string dst_ip = "169.254.79.181";
 macaddr_t dst_mac = {0xb8, 0x27, 0xeb, 0xd4, 0x45, 0x84};
 //macaddr_t dst_mac = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
@@ -21,6 +23,7 @@ macaddr_t dst_mac = {0xb8, 0x27, 0xeb, 0xd4, 0x45, 0x84};
 std::size_t pyaload_size = 200;
 void sig_alrm(int signo) {
     static stats_data previous;
+
     auto now = get_all_params();
     std::cout << "-------------NIC stats-------------" << "\n";
     std::cout << "dTX packets: " << now.tx_packets - previous.tx_packets << "\n";
@@ -138,8 +141,20 @@ void recv_loop() {
 }
 
 int main(int argc, char **argv) {
+
+    uint32_t addr;
+    inet_pton(AF_INET, dst_ip.c_str(), (struct in_addr *) &addr);
+    auto res = get_routes(addr);
+
+    if(!res.empty()) {
+        char if_nam_buf[IF_NAMESIZE];
+        interface_name = if_indextoname(res.front()._iface_id, if_nam_buf);
+        std::cout<<"interface name: " << interface_name<<std::endl;
+    }
+
     signal(SIGALRM, sig_alrm);
     sig_alrm(SIGALRM);
+
 
     char *first = packet;
 
@@ -187,7 +202,7 @@ int main(int argc, char **argv) {
     }
 
     while (42) {
-        sleep(1);
+//        sleep(1);
         if (sendto(s, packet, first - packet, 0,
                    (struct sockaddr *) &socket_address, (socklen_t) sizeof(sockaddr_ll)) < 0)
             perror("uh oh:");
