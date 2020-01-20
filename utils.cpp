@@ -4,7 +4,13 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-macaddr_t get_mac_from_iface(int s, std::string_view ifname){
+macaddr_t get_mac_from_iface(std::string_view ifname){
+    int s;
+    if ((s = socket(AF_PACKET, SOCK_RAW, htons(ETH_P_ALL))) < 0) {
+        perror("error:");
+        exit(EXIT_FAILURE);
+    }
+
     struct ifreq if_mac;
     memset(&if_mac, 0, sizeof(struct ifreq));
     strncpy(if_mac.ifr_name, ifname.data(), IFNAMSIZ-1);

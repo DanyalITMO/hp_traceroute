@@ -1,12 +1,13 @@
 #include "fillers.h"
 
 #include <sys/types.h>
-#include <netinet/ip.h>
-#include <netinet/ip_icmp.h>
 #include "stats.h"
-#include <netinet/in.h>
 #include <cstring>
 #include "utils.h"
+#include <netinet/ip.h>
+#include <netinet/ip_icmp.h>
+#include <netinet/in.h>
+#include <netinet/udp.h>
 
 void fill_ethernet(char*& first, std::array<uint8_t, IFHWADDRLEN> const& dst, std::array<uint8_t, IFHWADDRLEN> const& src, uint16_t proto){
     ether_header *eh = (struct ether_header *) first;
@@ -64,3 +65,14 @@ void fill_icmp(char*& first, char* packet, std::size_t packet_size){
     icmp->icmp_cksum = 0;
     icmp->icmp_cksum = in_cksum((u_short *) icmp, icmp_header_size + packet_size);
 }
+
+void fill_udp(char*& first, uint16_t dport, uint16_t sport){
+    udphdr *udp = (struct udphdr *) first;
+    first += sizeof(struct udphdr);
+
+    udp->source = sport;
+    udp->dest = dport;
+    udp->check = 0;
+    udp->check = in_cksum((u_short *) udp, sizeof(struct udphdr));
+}
+

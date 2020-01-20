@@ -1,6 +1,7 @@
 #include <fstream>
 #include <sstream>
 #include "stats.h"
+#include "config.h"
 
 /*
 std::ostream&    operator<< (std::ostream& stream, const stats_data& arg) {
@@ -21,7 +22,7 @@ std::size_t get_param(std::string_view param) {
     std::ifstream myfile;
     std::stringstream buffer;
 
-    myfile.open(std::string{"/sys/class/net/"}+ interface_name + std::string{"/statistics/"} + std::string{param});
+    myfile.open(std::string{"/sys/class/net/"}+ s_config._iface_name + std::string{"/statistics/"} + std::string{param});
     buffer << myfile.rdbuf();
     std::string t = buffer.str();
     auto now = std::stoull(t);

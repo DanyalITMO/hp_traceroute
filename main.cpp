@@ -14,11 +14,9 @@
 #include <linux/rtnetlink.h>
 #include "fillers.h"
 #include "route.h"
+#include "states.h"
+#include "config.h"
 
-std::string interface_name; //{"enx9cd643a36df7"};
-std::string dst_ip = "169.254.79.181";
-macaddr_t dst_mac = {0xb8, 0x27, 0xeb, 0xd4, 0x45, 0x84};
-//macaddr_t dst_mac = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
 
 std::size_t pyaload_size = 200;
 void sig_alrm(int signo) {
@@ -46,52 +44,18 @@ void sig_alrm(int signo) {
 
 char packet[65536];
 
-sockaddr_ll create_sockaddr_for_send(int s) {
-    struct ifreq if_idx;
+sockaddr_ll create_sockaddr_for_send() {
     struct sockaddr_ll socket_address;
-
-    /* Get the index of the interface to send on */
-    memset(&if_idx, 0, sizeof(struct ifreq));
-
-    if (interface_name.size() >= IFNAMSIZ) {
-        fprintf(stderr, "Too long iface name");
-        exit(-1);
-    }
-
-    strncpy(if_idx.ifr_name, interface_name.c_str(), IFNAMSIZ - 1);
-    if (ioctl(s, SIOCGIFINDEX, &if_idx) < 0)
-        perror("SIOCGIFINDEX");
-
-    /* Index of the network device */
-    socket_address.sll_ifindex = if_idx.ifr_ifindex;
-    /* Address length*/
+    socket_address.sll_ifindex = s_config._iface_index;
     socket_address.sll_halen = ETH_ALEN;
-    /* Destination MAC */
-    memcpy(socket_address.sll_addr, &dst_mac[0], IFHWADDRLEN);
+    memcpy(socket_address.sll_addr, &s_config._next_hop_mac[0], IFHWADDRLEN); //NOTE may be can delete this line and combine with create_sockaddr_for_receive()
     return socket_address;
 }
 
-sockaddr_ll create_sockaddr_for_receive(int s) {
-    struct ifreq if_idx;
+sockaddr_ll create_sockaddr_for_receive() {
     struct sockaddr_ll socket_address{0};
-
-    /* Get the index of the interface to send on */
-    memset(&if_idx, 0, sizeof(struct ifreq));
-
-    if (interface_name.size() >= IFNAMSIZ) {
-        fprintf(stderr, "Too long iface name");
-        exit(-1);
-    }
-
-    strncpy(if_idx.ifr_name, interface_name.c_str(), IFNAMSIZ - 1);
-    if (ioctl(s, SIOCGIFINDEX, &if_idx) < 0)
-        perror("SIOCGIFINDEX");
-
-
     socket_address.sll_family = AF_PACKET;
-
-    /* Index of the network device */
-    socket_address.sll_ifindex = if_idx.ifr_ifindex;
+    socket_address.sll_ifindex = s_config._iface_index;
     socket_address.sll_protocol = htons(ETH_P_ALL);
 
     return socket_address;
@@ -103,7 +67,7 @@ void recv_loop() {
         perror("error:");
         exit(EXIT_FAILURE);
     }
-    sockaddr_ll socket_address = create_sockaddr_for_receive(s);
+    sockaddr_ll socket_address = create_sockaddr_for_receive();
 
     while (true) {
 //        sleep(1);
@@ -121,10 +85,10 @@ void recv_loop() {
                 my_arphdr *arp = reinterpret_cast<my_arphdr *>(first);
                 first += sizeof(my_arphdr);
 
-                if(0 == memcmp(arp->ar_tha,  &get_mac_from_iface(s, interface_name)[0], IFHWADDRLEN)){
-                    memcpy(&dst_mac[0], arp->ar_sha, IFHWADDRLEN); //TODO add work with arp table
+                if(0 == memcmp(arp->ar_tha,  &s_config._iface_mac[0], IFHWADDRLEN)){
+                    memcpy(&s_config._next_hop_mac[0], arp->ar_sha, IFHWADDRLEN); //TODO add work with arp table
                     std::cout<<"dst mac = ";
-                    for(auto&& i : dst_mac)
+                    for(auto&& i : s_config._next_hop_mac)
                         std::cout << std::hex << (int)i << ":";
                     std::cout<<std::endl;
                     return;
@@ -139,18 +103,27 @@ void recv_loop() {
 //        if( ETH_P_ARP/*ETH_P_IP*/ == eh->ether_type)
     }
 }
+void init(){
+    std::string dst_ip = "169.254.79.181";
 
-int main(int argc, char **argv) {
-
-    uint32_t addr;
-    inet_pton(AF_INET, dst_ip.c_str(), (struct in_addr *) &addr);
-    auto res = get_routes(addr);
+    inet_pton(AF_INET, dst_ip.c_str(), (struct in_addr *) &s_config._dst_ip);
+    auto res = get_routes(s_config._dst_ip);
 
     if(!res.empty()) {
+        auto&& route = res.front(); // TODO add select path
+        s_config._iface_index = route._iface_id;
         char if_nam_buf[IF_NAMESIZE];
-        interface_name = if_indextoname(res.front()._iface_id, if_nam_buf);
-        std::cout<<"interface name: " << interface_name<<std::endl;
+        s_config._iface_name = if_indextoname(res.front()._iface_id, if_nam_buf);
+//        std::cout<<"interface name: " << s_config._iface_name<<std::endl;
     }
+
+    s_config._iface_ip = get_ip_from_iface(s_config._iface_name);
+    s_config._iface_mac = get_mac_from_iface(s_config._iface_name);
+    s_config._next_hop_mac = {0xb8, 0x27, 0xeb, 0xd4, 0x45, 0x84};
+}
+
+int main(int argc, char **argv) {
+    init();
 
     signal(SIGALRM, sig_alrm);
     sig_alrm(SIGALRM);
@@ -166,18 +139,12 @@ int main(int argc, char **argv) {
         exit(EXIT_FAILURE);
     }
 
-//    memset(packet, 0, sizeof(packet));
-    sockaddr_ll socket_address = create_sockaddr_for_send(s);
+    sockaddr_ll socket_address = create_sockaddr_for_send();
 
-    auto src_mac = get_mac_from_iface(s, interface_name);
     //resolve arp
     {
-        fill_ethernet(first, dst_mac, src_mac, ETH_P_ARP/*ETH_P_IP*/);
-
-        in_addr_t dst, src;
-        src = get_ip_from_iface(interface_name);
-        inet_pton(AF_INET, dst_ip.c_str(), (struct in_addr *) &dst);
-        fill_arp_request(first, src_mac, dst, src);
+        fill_ethernet(first, s_config._next_hop_mac, s_config._iface_mac, ETH_P_ARP/*ETH_P_IP*/);
+        fill_arp_request(first, s_config._iface_mac, s_config._dst_ip, s_config._iface_ip);
 
 //        while(true) {
             sleep(1);
@@ -189,14 +156,8 @@ int main(int argc, char **argv) {
     }
     {
         first = packet;
-        fill_ethernet(first, dst_mac, src_mac, ETH_P_IP);
-
-        in_addr_t dst, src;
-        src = get_ip_from_iface(interface_name);
-        inet_pton(AF_INET, dst_ip.c_str(), (struct in_addr *) &dst);
-
-
-        fill_ip(first, packet, dst, src, pyaload_size + icmp_header_size);
+        fill_ethernet(first, s_config._next_hop_mac, s_config._iface_mac, ETH_P_IP);
+        fill_ip(first, packet, s_config._dst_ip, s_config._iface_ip, pyaload_size + icmp_header_size);
         fill_icmp(first, packet, pyaload_size);
         first += pyaload_size;
     }
