@@ -14,7 +14,7 @@ void send_request(in_addr_t dst_ip){
     fill_arp_request(first, s_config._iface_mac, dst_ip, s_config._iface_ip);
     if (sendto(send_socket, packet, first - packet, 0,
                (struct sockaddr *) &send_socket_addr, (socklen_t) sizeof(sockaddr_ll)) < 0)
-        perror("main:");
+        perror("arp::send_request:");
 }
 
 }

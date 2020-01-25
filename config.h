@@ -3,14 +3,20 @@
 
 #include "utils.h"
 
+enum class STATE{
+    RESOLVE_ARP,
+    GET_PATH,
+    GENERATE_LOAD
+};
 struct config {
     in_addr_t _dst_ip;
     in_addr_t _iface_ip;
     std::string _iface_name;
     int _iface_index;
     macaddr_t _iface_mac;
-    macaddr_t _next_hop_mac;
+    macaddr_t _next_hop_mac = {0};
     std::size_t _payload_size;
+    STATE _state{STATE::RESOLVE_ARP};
 };
 
 extern config s_config;

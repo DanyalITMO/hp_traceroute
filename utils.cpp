@@ -7,9 +7,9 @@
 
 char packet[65536];
 
-sockaddr_ll send_socket_addr; //= create_sockaddr_for_send();
+sockaddr_ll send_socket_addr;
 
-sockaddr_ll recv_socket_addr;// = create_sockaddr_for_receive();
+sockaddr_ll recv_socket_addr;
 
 int create_socket(){
     int s;

@@ -39,8 +39,20 @@ void sig_alrm(int signo) {
     }
     previous = now;
 
-    alarm(1);
-    return;
+
+
+    switch (s_config._state) {
+        case STATE::RESOLVE_ARP :
+            arp::send_request(s_config._dst_ip);
+            alarm(1);
+            break;
+        case STATE::GET_PATH :
+            alarm(1);
+            break;
+        case STATE::GENERATE_LOAD :
+            alarm(1);
+            break;
+    }
 }
 
 sockaddr_ll create_sockaddr() {
@@ -68,7 +80,7 @@ void init() {
 
     s_config._iface_ip = get_ip_from_iface(s_config._iface_name);
     s_config._iface_mac = get_mac_from_iface(s_config._iface_name);
-    s_config._next_hop_mac = {0xb8, 0x27, 0xeb, 0xd4, 0x45, 0x84};
+//    s_config._next_hop_mac = {0xb8, 0x27, 0xeb, 0xd4, 0x45, 0x84};
     s_config._payload_size = 200;
 
     send_socket_addr = create_sockaddr();
@@ -81,23 +93,18 @@ int main(int argc, char **argv) {
     signal(SIGALRM, sig_alrm);
     sig_alrm(SIGALRM);
 
-    char *first = packet;
+//    arp::send_request(s_config._dst_ip);
 
     memset(packet, 'A', sizeof(packet));   // payload will be all As
-
-
-    //resolve arp
-    fill_ethernet(first, s_config._next_hop_mac, s_config._iface_mac, ETH_P_ARP);
-    fill_arp_request(first, s_config._iface_mac, s_config._dst_ip, s_config._iface_ip);
-
-    arp::send_request(s_config._dst_ip);
 
     macaddr_t empty{0, 0, 0, 0, 0, 0};
     while (0 == memcmp(&empty[0], &s_config._next_hop_mac[0], IFHWADDRLEN)) {
         recv();
     }
+    s_config._state = STATE::GET_PATH;
 
-    first = packet;
+
+    char * first = packet;
     fill_ethernet(first, s_config._next_hop_mac, s_config._iface_mac, ETH_P_IP);
     fill_ip(first, packet, s_config._dst_ip, s_config._iface_ip, s_config._payload_size + icmp_header_size);
     fill_icmp(first, packet, s_config._payload_size);
