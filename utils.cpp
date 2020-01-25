@@ -1,8 +1,28 @@
-
 #include "utils.h"
+#include "config.h"
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <linux/if_packet.h>
+
+char packet[65536];
+
+sockaddr_ll send_socket_addr; //= create_sockaddr_for_send();
+
+sockaddr_ll recv_socket_addr;// = create_sockaddr_for_receive();
+
+int create_socket(){
+    int s;
+    if ((s = socket(AF_PACKET, SOCK_RAW, htons(ETH_P_ALL))) < 0) {
+        perror("error:");
+        exit(EXIT_FAILURE);
+    }
+    return s;
+}
+
+int send_socket = create_socket();
+
+int recv_socket = create_socket();
 
 macaddr_t get_mac_from_iface(std::string_view ifname){
     int s;

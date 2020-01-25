@@ -10,6 +10,7 @@ struct config {
     int _iface_index;
     macaddr_t _iface_mac;
     macaddr_t _next_hop_mac;
+    std::size_t _payload_size;
 };
 
 extern config s_config;

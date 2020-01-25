@@ -21,6 +21,7 @@
 #include <csignal>
 #include "stats.h"
 #include <netinet/in.h>
+#include <linux/if_packet.h>
 
 constexpr  std::size_t icmp_header_size{8};
 using macaddr_t = std::array<uint8_t, IFHWADDRLEN>;
@@ -31,5 +32,14 @@ in_addr_t get_ip_from_iface(std::string_view name);
 
 u_short in_cksum(u_short *addr, int len);
 
+extern char packet[65536];
+
+extern sockaddr_ll send_socket_addr;
+
+extern sockaddr_ll recv_socket_addr;
+
+extern int send_socket;
+
+extern int recv_socket;
 
 #endif //SENDER_UTILS_H
