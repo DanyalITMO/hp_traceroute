@@ -37,7 +37,7 @@ void fill_arp_request(char*& first, macaddr_t const& src_mac, in_addr_t dst_ip, 
     *dst =  dst_ip;
 }
 
-void fill_ip(char*& first, char* packet,  in_addr_t dst, in_addr_t src, std::size_t packet_size){
+void fill_ip(char*& first, in_addr_t dst, in_addr_t src, std::size_t packet_size, uint8_t ttl){
     iphdr *ip = (struct iphdr *) (first);
     first += sizeof(iphdr);
 
@@ -46,7 +46,7 @@ void fill_ip(char*& first, char* packet,  in_addr_t dst, in_addr_t src, std::siz
     ip->tos = 0;
     ip->tot_len = htons(packet_size + sizeof(iphdr));
     ip->frag_off = 0;
-    ip->ttl = 64;
+    ip->ttl = ttl;
     ip->protocol = IPPROTO_ICMP; // this has to be IPPROTO_RAW
     ip->saddr = src;
     ip->daddr = dst;
@@ -54,7 +54,7 @@ void fill_ip(char*& first, char* packet,  in_addr_t dst, in_addr_t src, std::siz
     ip->check = in_cksum((u_short *) ip, sizeof(iphdr));
 }
 
-void fill_icmp(char*& first, char* packet, std::size_t packet_size){
+void fill_icmp(char*& first, std::size_t packet_size){
     icmp *icmp = (struct icmp *) first;
     first += icmp_header_size;
 

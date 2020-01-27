@@ -19,6 +19,7 @@
 #include "handler_ipv4.h"
 #include "arp.h"
 
+bool got_alarm = false;
 
 void sig_alrm(int signo) {
     static stats_data previous;
@@ -40,13 +41,13 @@ void sig_alrm(int signo) {
     previous = now;
 
 
-
     switch (s_config._state) {
         case STATE::RESOLVE_ARP :
             arp::send_request(s_config._dst_ip);
             alarm(1);
             break;
         case STATE::GET_PATH :
+            got_alarm = true;
             alarm(1);
             break;
         case STATE::GENERATE_LOAD :
@@ -65,7 +66,7 @@ sockaddr_ll create_sockaddr() {
 
 void init() {
 //    std::string dst_ip = "169.254.79.181";
-    std::string dst_ip = "169.254.79.181";
+    std::string dst_ip = "8.8.8.8";
 
     inet_pton(AF_INET, dst_ip.c_str(), (struct in_addr *) &s_config._dst_ip);
     auto res = get_routes(s_config._dst_ip);
@@ -85,6 +86,10 @@ void init() {
 
     send_socket_addr = create_sockaddr();
     recv_socket_addr = create_sockaddr();
+
+    timeval tv{3, 0};
+
+    setsockopt(recv_socket, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv));
 }
 
 int main(int argc, char **argv) {
@@ -99,23 +104,37 @@ int main(int argc, char **argv) {
 
     macaddr_t empty{0, 0, 0, 0, 0, 0};
     while (0 == memcmp(&empty[0], &s_config._next_hop_mac[0], IFHWADDRLEN)) {
-        recv();
+        process_arp();
     }
     s_config._state = STATE::GET_PATH;
 
+    std::vector<in_addr_t> route;
 
-    char * first = packet;
-    fill_ethernet(first, s_config._next_hop_mac, s_config._iface_mac, ETH_P_IP);
-    fill_ip(first, packet, s_config._dst_ip, s_config._iface_ip, s_config._payload_size + icmp_header_size);
-    fill_icmp(first, packet, s_config._payload_size);
-    first += s_config._payload_size;
+    bool end = false;
+    for (uint8_t ttl = 1; ttl <= 64 && end == false; ttl++) {
+        char *first = packet;
+        fill_ethernet(first, s_config._next_hop_mac, s_config._iface_mac, ETH_P_IP);
+        fill_ip(first, s_config._dst_ip, s_config._iface_ip, s_config._payload_size + icmp_header_size, ttl);
+        fill_icmp(first, s_config._payload_size);
+        first += s_config._payload_size;
 
-
-    while (42) {
-//        sleep(1);
         if (sendto(send_socket, packet, first - packet, 0,
                    (struct sockaddr *) &send_socket_addr, (socklen_t) sizeof(sockaddr_ll)) < 0)
             perror("uh oh:");
+
+        RET rc{RET::WRONG_ADDR};
+        while (rc != RET::SUCCESS) {
+            rc = process_icmp(route, end);
+            if (rc == RET::TIMEOUT)
+                std::cout<<"*";
+        }
+        std::cout<<route.back()<<std::endl;
+
+    }
+
+    while (42) {
+//        sleep(1);
+
     }
     return (0);
 }

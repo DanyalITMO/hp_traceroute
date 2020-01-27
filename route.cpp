@@ -130,6 +130,9 @@ std::optional<route_info> check_route(struct nlmsghdr* nl_header_answer, uint32_
     }
 
     if (tb[RTA_DST] /*&& tb[RTA_GATEWAY]*/) {
+
+        std::cerr<<"!!match: "<<  inet_ntop(r->rtm_family, RTA_DATA(tb[RTA_DST]), buf, sizeof(buf))<<std::endl;
+
         uint32_t mask = std::numeric_limits<uint32_t>::max();
 //        print_bits(mask);
         mask =  mask << (32 - r->rtm_dst_len);
@@ -146,7 +149,6 @@ std::optional<route_info> check_route(struct nlmsghdr* nl_header_answer, uint32_
             ri._mask = r->rtm_dst_len;
             res = ri;
             return  res;
-//            std::cerr<<"!!match: "<<  inet_ntop(r->rtm_family, RTA_DATA(tb[RTA_DST]), buf, sizeof(buf))<<std::endl;
         }
     }
     return {};

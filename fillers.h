@@ -29,7 +29,7 @@ struct my_arphdr {
 
 void fill_ethernet(char*& first, std::array<uint8_t, IFHWADDRLEN> const& dst, std::array<uint8_t, IFHWADDRLEN> const& src, uint16_t proto);
 void fill_arp_request(char*& first, macaddr_t const& src_mac, in_addr_t dst_ip, in_addr_t src_ip);
-void fill_ip(char*& first, char* packet, in_addr_t dst, in_addr_t src, std::size_t packet_size);
-void fill_icmp(char*& first, char* packet, std::size_t packet_size);
+void fill_ip(char*& first, in_addr_t dst, in_addr_t src, std::size_t packet_size, uint8_t ttl = 64);
+void fill_icmp(char*& first, std::size_t packet_size);
 
 #endif //SENDER_FILLERS_H

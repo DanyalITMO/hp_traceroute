@@ -22,8 +22,10 @@
 #include "stats.h"
 #include <netinet/in.h>
 #include <linux/if_packet.h>
+#include <vector>
 
-constexpr  std::size_t icmp_header_size{8};
+constexpr std::size_t icmp_header_size{8};
+
 using macaddr_t = std::array<uint8_t, IFHWADDRLEN>;
 
 macaddr_t get_mac_from_iface(std::string_view ifname);
