@@ -15,6 +15,7 @@ struct config {
     int _iface_index;
     macaddr_t _iface_mac;
     macaddr_t _next_hop_mac = {0};
+    in_addr_t _next_hop_ip = {0};
     std::size_t _payload_size;
     STATE _state{STATE::RESOLVE_ARP};
 };

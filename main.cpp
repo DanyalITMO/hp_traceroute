@@ -76,6 +76,14 @@ void init() {
         s_config._iface_index = route._iface_id;
         char if_nam_buf[IF_NAMESIZE];
         s_config._iface_name = if_indextoname(res.front()._iface_id, if_nam_buf);
+        if(route._gw)
+            s_config._next_hop_ip = *route._gw;
+        else
+            s_config._next_hop_ip = s_config._dst_ip; // local network
+
+//        char buf[256];
+//        std::cerr<<"!!!!:next_hop_ip "<<  inet_ntop(AF_INET, reinterpret_cast<void*>(&s_config._next_hop_ip), buf, sizeof(buf))<<std::endl;
+
 //        std::cout<<"interface name: " << s_config._iface_name<<std::endl;
     }
 
@@ -89,7 +97,7 @@ void init() {
 
     timeval tv{3, 0};
 
-    setsockopt(recv_socket, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv));
+//    setsockopt(recv_socket, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv));
 }
 
 int main(int argc, char **argv) {
@@ -98,13 +106,14 @@ int main(int argc, char **argv) {
     signal(SIGALRM, sig_alrm);
     sig_alrm(SIGALRM);
 
-//    arp::send_request(s_config._dst_ip);
+    arp::send_request(s_config._next_hop_ip );
 
     memset(packet, 'A', sizeof(packet));   // payload will be all As
 
     macaddr_t empty{0, 0, 0, 0, 0, 0};
     while (0 == memcmp(&empty[0], &s_config._next_hop_mac[0], IFHWADDRLEN)) {
         process_arp();
+//        std::cerr<<"resolving arp"<<std::endl;
     }
     s_config._state = STATE::GET_PATH;
 
@@ -128,7 +137,12 @@ int main(int argc, char **argv) {
             if (rc == RET::TIMEOUT)
                 std::cout<<"*";
         }
-        std::cout<<route.back()<<std::endl;
+
+        char buf[256];
+        if(!route.empty())
+            std::cerr<<"ROUTE: "<<  inet_ntop(AF_INET, reinterpret_cast<void*>(&route.back()), buf, sizeof(buf))<<std::endl;
+
+//        std::cout<<inet_pton()route.back()<<std::endl;
 
     }
 

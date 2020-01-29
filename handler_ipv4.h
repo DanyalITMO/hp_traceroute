@@ -8,7 +8,10 @@ enum class RET{
     SUCCESS,
     RECV_ERROR,
     TIMEOUT,
-    WRONG_ADDR
+    WRONG_ADDR,
+    WRONG_PROTOCOL,
+    WRONG_PACKET,
+    ANOTHER_DST
 };
 
 //RET recv();

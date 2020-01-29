@@ -131,9 +131,7 @@ std::optional<route_info> check_route(struct nlmsghdr* nl_header_answer, uint32_
 
     if (tb[RTA_DST] /*&& tb[RTA_GATEWAY]*/) {
 
-        std::cerr<<"!!match: "<<  inet_ntop(r->rtm_family, RTA_DATA(tb[RTA_DST]), buf, sizeof(buf))<<std::endl;
-
-        uint32_t mask = std::numeric_limits<uint32_t>::max();
+         uint32_t mask = std::numeric_limits<uint32_t>::max();
 //        print_bits(mask);
         mask =  mask << (32 - r->rtm_dst_len);
         mask = htonl(mask);
@@ -141,6 +139,9 @@ std::optional<route_info> check_route(struct nlmsghdr* nl_header_answer, uint32_
         std::optional<route_info> res;
         route_info ri;
         if(is_match(*((uint32_t *)RTA_DATA(tb[RTA_DST])), mask, ip_from_packet)){
+            std::cerr<<"!!match: "<<  inet_ntop(r->rtm_family, RTA_DATA(tb[RTA_DST]), buf, sizeof(buf))<<std::endl;
+
+
             if(tb[RTA_GATEWAY])
                 ri._gw = *((uint32_t *)tb[RTA_GATEWAY]);
             if (tb[RTA_OIF]) {
@@ -150,6 +151,21 @@ std::optional<route_info> check_route(struct nlmsghdr* nl_header_answer, uint32_
             res = ri;
             return  res;
         }
+    } else{
+        std::optional<route_info> res;
+        route_info ri;
+        if(tb[RTA_GATEWAY]){
+            in_addr_t addr = *((in_addr_t *)RTA_DATA(tb[RTA_GATEWAY]));
+            ri._gw = addr;
+        }
+        if (tb[RTA_OIF]) {
+            ri._iface_id = *(__u32 *)RTA_DATA(tb[RTA_OIF]);
+        }
+        ri._mask = r->rtm_dst_len;
+        res = ri;
+//        std::cerr<<"!###: default gw "<<  inet_ntop(r->rtm_family, &ri._gw, buf, sizeof(buf))<<std::endl;
+        return  res;
+
     }
     return {};
 //    printf("\n");
