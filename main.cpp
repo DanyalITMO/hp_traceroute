@@ -21,26 +21,28 @@
 
 bool got_alarm = false;
 
+void print_stats(){
+      static stats_data previous;
+      auto now = get_all_params();
+      std::cout << "-------------NIC stats-------------" << "\n";
+      std::cout << "dTX packets: " << now.tx_packets - previous.tx_packets << "\n";
+      std::cout << "dRX packets: " << now.rx_packets - previous.rx_packets << "\n";
+  //        std::cout << "dTX bytes: " << now.tx_bytes - previous.tx_bytes << "\n";
+  //        std::cout << "dRX bytes: " << now.rx_bytes - previous.rx_bytes << std::endl;
+      {
+          auto[n, s] = get_max_measurement((now.tx_bytes - previous.tx_bytes) * 8);
+          std::cout << "dTX: " << n << s << "\n";
+      }
+      {
+          auto[n, s] = get_max_measurement((now.rx_bytes - previous.rx_bytes) * 8);
+          std::cout << "dRX: " << n << s << "\n";
+      }
+      previous = now;
+
+}
 void sig_alrm(int signo) {
-    static stats_data previous;
 
-    auto now = get_all_params();
-    std::cout << "-------------NIC stats-------------" << "\n";
-    std::cout << "dTX packets: " << now.tx_packets - previous.tx_packets << "\n";
-    std::cout << "dRX packets: " << now.rx_packets - previous.rx_packets << "\n";
-//        std::cout << "dTX bytes: " << now.tx_bytes - previous.tx_bytes << "\n";
-//        std::cout << "dRX bytes: " << now.rx_bytes - previous.rx_bytes << std::endl;
-    {
-        auto[n, s] = get_max_measurement((now.tx_bytes - previous.tx_bytes) * 8);
-        std::cout << "dTX: " << n << s << "\n";
-    }
-    {
-        auto[n, s] = get_max_measurement((now.rx_bytes - previous.rx_bytes) * 8);
-        std::cout << "dRX: " << n << s << "\n";
-    }
-    previous = now;
-
-
+//    print_stats();
     switch (s_config._state) {
         case STATE::RESOLVE_ARP :
             arp::send_request(s_config._dst_ip);
@@ -97,7 +99,7 @@ void init() {
 
     timeval tv{3, 0};
 
-//    setsockopt(recv_socket, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv));
+    setsockopt(recv_socket, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv));
 }
 
 int main(int argc, char **argv) {
@@ -132,15 +134,21 @@ int main(int argc, char **argv) {
             perror("uh oh:");
 
         RET rc{RET::WRONG_ADDR};
-        while (rc != RET::SUCCESS) {
+        int probe_count = 3;
+        while (rc != RET::SUCCESS && probe_count != 0) {
             rc = process_icmp(route, end);
-            if (rc == RET::TIMEOUT)
-                std::cout<<"*";
+            if(rc == RET::SUCCESS){
+                char buf[256];
+                if(!route.empty())
+                    std::cerr<<"ROUTE: "<<  inet_ntop(AF_INET, reinterpret_cast<void*>(&route.back()), buf, sizeof(buf));
+            }
+            if (rc == RET::TIMEOUT || rc == RET::RECV_ERROR) {
+                std::cerr << "*";
+                probe_count--;
+            }
         }
+        std::cerr << std::endl;
 
-        char buf[256];
-        if(!route.empty())
-            std::cerr<<"ROUTE: "<<  inet_ntop(AF_INET, reinterpret_cast<void*>(&route.back()), buf, sizeof(buf))<<std::endl;
 
 //        std::cout<<inet_pton()route.back()<<std::endl;
 

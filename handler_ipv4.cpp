@@ -19,15 +19,16 @@ RET recv(std::size_t &packet_size, ether_header *&eh) {
     int saddr_size = sizeof(recv_socket_addr);
 
     int rc = recvfrom(recv_socket, packet, sizeof(packet), 0,
-                      (struct sockaddr *) &recv_socket_addr, (socklen_t *) &saddr_size) < 0;
+                      (struct sockaddr *) &recv_socket_addr, (socklen_t *) &saddr_size);
 
     if (rc < 0) {
+//        std::cerr<<rc<<std::endl;
         packet_size = 0;
 
         if (EWOULDBLOCK == errno) {
             return RET::TIMEOUT;
         } else {
-            perror("recv_loop:");
+//            perror("recv_loop:");
             return RET::RECV_ERROR;
         }
     } else {

@@ -3,13 +3,14 @@
 
 #include <string>
 #include <tuple>
-extern std::string interface_name;
+
 struct stats_data {
     std::size_t tx_packets;
     std::size_t rx_packets;
     std::size_t tx_bytes;
     std::size_t rx_bytes;
 };
+
 stats_data operator-(stats_data const &arg1, stats_data const &arg2);
 
 stats_data get_all_params();
