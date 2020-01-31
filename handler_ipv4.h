@@ -18,4 +18,7 @@ enum class RET{
 RET process_arp();
 
 RET process_icmp(std::vector<in_addr_t>& route, bool& end);
+
+RET process_icmp_load();
+
 #endif //SENDER_HANDLER_IPV4_H

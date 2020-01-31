@@ -40,6 +40,10 @@ void print_stats(){
       previous = now;
 
 }
+
+
+std::vector<in_addr_t> route;
+decltype (route)::iterator current;
 void sig_alrm(int signo) {
 
 //    print_stats();
@@ -52,12 +56,25 @@ void sig_alrm(int signo) {
             got_alarm = true;
             alarm(1);
             break;
-        case STATE::GENERATE_LOAD :
+        case STATE::GENERATE_LOAD : {
+            static bool first = true;
+            if(first){
+                current = route.begin();
+                first = false;
+            } else {
+                current++;
+            }
+            if(std::end(route) == current)
+                s_config._state = STATE::FINISH;
             alarm(1);
             break;
+            }
+        case STATE::FINISH :
+
+        break;
+
     }
 }
-
 sockaddr_ll create_sockaddr() {
     struct sockaddr_ll socket_address;
     socket_address.sll_ifindex = s_config._iface_index;
@@ -103,6 +120,8 @@ void init() {
 }
 
 int main(int argc, char **argv) {
+    char buf[256];
+
     init();
 
     signal(SIGALRM, sig_alrm);
@@ -119,7 +138,7 @@ int main(int argc, char **argv) {
     }
     s_config._state = STATE::GET_PATH;
 
-    std::vector<in_addr_t> route;
+
 
     bool end = false;
     for (uint8_t ttl = 1; ttl <= 64 && end == false; ttl++) {
@@ -138,7 +157,7 @@ int main(int argc, char **argv) {
         while (rc != RET::SUCCESS && probe_count != 0) {
             rc = process_icmp(route, end);
             if(rc == RET::SUCCESS){
-                char buf[256];
+
                 if(!route.empty())
                     std::cerr<<"ROUTE: "<<  inet_ntop(AF_INET, reinterpret_cast<void*>(&route.back()), buf, sizeof(buf));
             }
@@ -148,16 +167,32 @@ int main(int argc, char **argv) {
             }
         }
         std::cerr << std::endl;
-
-
-//        std::cout<<inet_pton()route.back()<<std::endl;
-
     }
 
-    while (42) {
-//        sleep(1);
+    s_config._state = STATE::GENERATE_LOAD;
+    raise(SIGALRM);
 
+
+    while(STATE::GENERATE_LOAD == s_config._state){
+        char *first = packet;
+        fill_ethernet(first, s_config._next_hop_mac, s_config._iface_mac, ETH_P_IP);
+        fill_ip(first, *current, s_config._iface_ip, s_config._payload_size + icmp_header_size);
+        fill_icmp(first, s_config._payload_size);
+        first += s_config._payload_size;
+        if (sendto(send_socket, packet, first - packet, 0,
+                   (struct sockaddr *) &send_socket_addr, (socklen_t) sizeof(sockaddr_ll)) < 0)
+            perror("uh oh:");
+
+        process_icmp_load();
     }
+
+    for(auto&& it : route){
+        if(statistic.count(it))
+            std::cerr<<inet_ntop(AF_INET, reinterpret_cast<void*>(&it), buf, sizeof(buf))<<"- "<< (statistic.at(it) * s_config._payload_size * 8) << "bit/s"<<std::endl;
+        else
+            std::cerr<<inet_ntop(AF_INET, reinterpret_cast<void*>(&it), buf, sizeof(buf))<<"- "<< 0 << "bit/s"<<std::endl;
+    }
+
     return (0);
 }
 

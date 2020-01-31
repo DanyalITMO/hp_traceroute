@@ -23,6 +23,7 @@
 #include <netinet/in.h>
 #include <linux/if_packet.h>
 #include <vector>
+#include <map>
 
 constexpr std::size_t icmp_header_size{8};
 
@@ -43,5 +44,7 @@ extern sockaddr_ll recv_socket_addr;
 extern int send_socket;
 
 extern int recv_socket;
+
+extern std::map<in_addr_t, std::size_t> statistic;
 
 #endif //SENDER_UTILS_H

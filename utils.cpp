@@ -24,6 +24,8 @@ int send_socket = create_socket();
 
 int recv_socket = create_socket();
 
+std::map<in_addr_t, std::size_t> statistic;
+
 macaddr_t get_mac_from_iface(std::string_view ifname){
     int s;
     if ((s = socket(AF_PACKET, SOCK_RAW, htons(ETH_P_ALL))) < 0) {

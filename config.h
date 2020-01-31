@@ -6,7 +6,8 @@
 enum class STATE{
     RESOLVE_ARP,
     GET_PATH,
-    GENERATE_LOAD
+    GENERATE_LOAD,
+    FINISH
 };
 struct config {
     in_addr_t _dst_ip;

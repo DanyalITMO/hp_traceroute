@@ -109,3 +109,45 @@ RET process_icmp(std::vector<in_addr_t> &route, bool &end) {
 
     return RET::SUCCESS;
 }
+
+
+RET process_icmp_load() {
+    ether_header *eh;
+    char *first = packet + sizeof(ether_header);
+    std::size_t packet_size;
+    auto rc = recv(packet_size, eh);
+    if (rc != RET::SUCCESS)
+        return rc;
+
+    if (ETH_P_IP != htons(eh->ether_type))
+        return RET::WRONG_PROTOCOL;
+
+    iphdr *ip = reinterpret_cast<iphdr *> (first);
+    first += sizeof(iphdr);
+
+    if (ip->daddr != s_config._iface_ip)
+        return RET::ANOTHER_DST;
+
+    if (ip->protocol != IPPROTO_ICMP)
+        return RET::WRONG_PROTOCOL;
+
+    icmp *icmp_h = reinterpret_cast<struct icmp *> (first);
+    int icmplen = packet_size - (first - packet);
+    if (icmplen < icmp_header_size)// need in each reinterpet cast
+        return RET::WRONG_PACKET;// not enough to look at ICMP header
+
+    first += icmp_header_size;
+    if (icmp_h->icmp_type == ICMP_ECHOREPLY) {
+        if (icmplen < icmp_header_size + sizeof(struct ip))
+            return RET::WRONG_PACKET;            // not enough data to look at inner IP
+
+        if(statistic.count(ip->saddr))
+            statistic.at(ip->saddr)++;
+        else
+            statistic.emplace(ip->saddr, 0);
+    }
+
+    return RET::SUCCESS;
+}
+
+
