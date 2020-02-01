@@ -18,6 +18,8 @@
 #include "config.h"
 #include "handler_ipv4.h"
 #include "arp.h"
+#include <thread>
+#include <atomic>
 
 bool got_alarm = false;
 
@@ -119,6 +121,20 @@ void init() {
     setsockopt(recv_socket, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv));
 }
 
+
+std::string convert_speed(uint32_t speed){
+    uint32_t kbit = 1024;
+    uint32_t mbit = 1024 * kbit;
+    uint32_t gbit = 1024 * mbit;
+
+    if(speed > gbit)
+        return std::to_string(static_cast<double>(speed)/ gbit) + "gbit/s";
+    if(speed > mbit)
+        return std::to_string(static_cast<double>(speed)/ mbit) + "mbit/s";
+    if(speed > kbit)
+        return std::to_string(static_cast<double>(speed)/ kbit) + "kbit/s";
+}
+
 int main(int argc, char **argv) {
     char buf[256];
 
@@ -172,7 +188,13 @@ int main(int argc, char **argv) {
     s_config._state = STATE::GENERATE_LOAD;
     raise(SIGALRM);
 
-
+    std::map<in_addr_t, std::size_t> recv_statistc, send_statistic;
+    std::atomic<bool> f{true};
+    std::thread th{[&f, &recv_statistc](){
+            while(f){
+                process_icmp_load(recv_statistc);
+            }
+            }};
     while(STATE::GENERATE_LOAD == s_config._state){
         char *first = packet;
         fill_ethernet(first, s_config._next_hop_mac, s_config._iface_mac, ETH_P_IP);
@@ -183,12 +205,30 @@ int main(int argc, char **argv) {
                    (struct sockaddr *) &send_socket_addr, (socklen_t) sizeof(sockaddr_ll)) < 0)
             perror("uh oh:");
 
-        process_icmp_load();
+
+
+        if(send_statistic.count(*current)){
+            try {
+                send_statistic.at(*current)++;
+
+            } catch (...) {
+                std::cerr<<send_statistic.count(*current)<<std::endl;
+            }
+        }
+        else
+            send_statistic.emplace(*current, 0);
     }
 
+
+    f = false;
+    th.join();
+
+    auto packet_size = (sizeof(ether_header) +  sizeof(iphdr) + icmp_header_size + s_config._payload_size) * 8;
     for(auto&& it : route){
-        if(statistic.count(it))
-            std::cerr<<inet_ntop(AF_INET, reinterpret_cast<void*>(&it), buf, sizeof(buf))<<"- "<< (statistic.at(it) * s_config._payload_size * 8) << "bit/s"<<std::endl;
+        if(recv_statistc.count(it))
+            std::cerr<<inet_ntop(AF_INET, reinterpret_cast<void*>(&it), buf, sizeof(buf))<<"recv: "<< convert_speed(recv_statistc.at(it) *packet_size) <<
+                    ", send: "<< convert_speed(send_statistic.at(it) *packet_size) <<std::endl;
+
         else
             std::cerr<<inet_ntop(AF_INET, reinterpret_cast<void*>(&it), buf, sizeof(buf))<<"- "<< 0 << "bit/s"<<std::endl;
     }

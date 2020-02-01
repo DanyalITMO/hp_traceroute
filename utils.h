@@ -35,7 +35,7 @@ in_addr_t get_ip_from_iface(std::string_view name);
 
 u_short in_cksum(u_short *addr, int len);
 
-extern char packet[65536];
+extern thread_local char packet[65536];
 
 extern sockaddr_ll send_socket_addr;
 
@@ -45,6 +45,6 @@ extern int send_socket;
 
 extern int recv_socket;
 
-extern std::map<in_addr_t, std::size_t> statistic;
+//extern std::map<in_addr_t, std::size_t> statistic;
 
 #endif //SENDER_UTILS_H

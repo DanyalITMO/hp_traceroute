@@ -3,6 +3,7 @@
 
 #include <vector>
 #include <netinet/in.h>
+#include <map>
 
 enum class RET{
     SUCCESS,
@@ -19,6 +20,6 @@ RET process_arp();
 
 RET process_icmp(std::vector<in_addr_t>& route, bool& end);
 
-RET process_icmp_load();
+RET process_icmp_load(std::map<in_addr_t, std::size_t>& statistic);
 
 #endif //SENDER_HANDLER_IPV4_H

@@ -5,7 +5,7 @@
 #include <stdlib.h>
 #include <linux/if_packet.h>
 
-char packet[65536];
+thread_local char packet[65536];
 
 sockaddr_ll send_socket_addr;
 
@@ -24,7 +24,7 @@ int send_socket = create_socket();
 
 int recv_socket = create_socket();
 
-std::map<in_addr_t, std::size_t> statistic;
+//std::map<in_addr_t, std::size_t> statistic;
 
 macaddr_t get_mac_from_iface(std::string_view ifname){
     int s;

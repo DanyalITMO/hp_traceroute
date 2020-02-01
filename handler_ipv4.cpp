@@ -111,7 +111,7 @@ RET process_icmp(std::vector<in_addr_t> &route, bool &end) {
 }
 
 
-RET process_icmp_load() {
+RET process_icmp_load(std::map<in_addr_t, std::size_t>& statistic) {
     ether_header *eh;
     char *first = packet + sizeof(ether_header);
     std::size_t packet_size;
@@ -141,8 +141,15 @@ RET process_icmp_load() {
         if (icmplen < icmp_header_size + sizeof(struct ip))
             return RET::WRONG_PACKET;            // not enough data to look at inner IP
 
-        if(statistic.count(ip->saddr))
-            statistic.at(ip->saddr)++;
+
+        if(statistic.count(ip->saddr)){
+            try {
+                statistic.at(ip->saddr)++;
+
+            } catch (...) {
+                std::cerr<<statistic.count(ip->saddr)<<std::endl;
+            }
+        }
         else
             statistic.emplace(ip->saddr, 0);
     }
